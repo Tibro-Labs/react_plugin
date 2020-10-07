@@ -1,0 +1,72 @@
+<project name="react_triglav_plugin" basedir="." default="main">
+
+	<property name="major-version-number" value="1.0" />
+	<property name="project-name" value="${ant.project.name}" />
+
+	<property name="src.dir" value="src" />
+	<property name="scripts.dir" value="scripts" />
+
+	<property name="build.dir" value="build" />
+	<property name="classes.dir" value="${build.dir}/classes" />
+	<property name="jar.dir" value="${build.dir}/jar" />
+	<property name="lib.dir" value="../common_libs" />
+	<property name="triglav.plugins" value="../triglav_rest/WebContent/plugins" />
+
+	<target name="triglav_exists">
+    	<available file="${triglav.plugins}" type="dir" property="triglav.present"/>
+	</target>
+	<target name="copy_react_triglav_plugin_2triglav" depends="triglav_exists" if="triglav.present">
+        <copy file="${jar.dir}/${ant.project.name}-${major-version-number}_dev.jar" tofile="${triglav.plugins}/${ant.project.name}-${major-version-number}_dev.jar" overwrite="true"/>
+	</target>
+
+	<path id="classpath">
+		<fileset dir="${lib.dir}" includes="**/*.jar" />
+
+	</path>
+
+	<path id="application" location="${jar.dir}/${ant.project.name}.jar" />
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<target name="compile">
+		<mkdir dir="${classes.dir}" />
+		<javac target="1.8" debug="true" debuglevel="lines,vars,source" srcdir="${src.dir}" destdir="${classes.dir}" classpathref="classpath" />
+		<copy todir="${classes.dir}">
+			<fileset dir="${src.dir}" excludes="**/*.java" />
+		</copy>
+
+	</target>
+
+	<target name="jar" depends="compile">
+		<mkdir dir="${jar.dir}" />
+		<jar destfile="${jar.dir}/${ant.project.name}-${major-version-number}_dev.jar" basedir="${classes.dir}">
+			<manifest>
+				<attribute name="Main-Class" value="${main-class}" />
+			</manifest>
+			<fileset dir="${src.dir}" includes="**/*.java" />
+		</jar>
+	</target>
+
+
+
+
+	<target name="jar-version">
+		<buildnumber />
+		<property name="version-number" value="${major-version-number}.${build.number}" />
+		<jar basedir="${classes.dir}" destfile="${jar.dir}/${project-name}-${version-number}.jar">
+			<manifest>
+				<attribute name="Built-By" value="${builder}" />
+				<attribute name="Built-On" value="${build-info.current-date}" />
+				<attribute name="Built-At" value="${build-info.current-time}" />
+				<attribute name="Implementation-Version" value="${version-number}" />
+			</manifest>
+		</jar>
+	</target>
+
+	<target name="clean-build" depends="clean,jar,copy_react_triglav_plugin_2triglav" />
+
+	<target name="main" depends="clean-build" />
+
+</project>

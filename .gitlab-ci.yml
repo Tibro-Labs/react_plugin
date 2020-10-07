@@ -1,0 +1,61 @@
+stages:
+  - build
+  - sonarqube
+  
+before_script:
+  - git reset --hard HEAD
+  - git clean -df
+  - git stash
+  - git pull origin master
+
+
+after_script:
+  - git reset --hard HEAD
+  - git clean -df
+  - git stash
+  - git pull origin master
+
+
+aleph_triglav_plugin:
+  stage: build
+  variables:
+    PROJECT_JAR: react_triglav_plugin-1.0_dev.jar
+  script:
+    - pwd
+    - git remote set-url origin git@gitlab.prtech.mk:prtech/react_triglav_plugin.git
+    - git fetch origin $CI_BUILD_REF_NAME
+    - git reset --hard origin/$CI_BUILD_REF_NAME
+    - git clean -fdx
+    - git checkout $CI_BUILD_REF_NAME
+    - git pull
+    - mkdir -p /home/gitlab-runner/JARS/$CI_BUILD_REF_NAME
+    # always take dependancies from current branch from common_libs repo
+    - git -C ../common_libs reset --hard HEAD
+    - git -C ../common_libs clean -dfx
+    - git -C ../common_libs checkout dev
+    - git -C ../common_libs pull
+
+    - ant clean
+    - ant compile
+    - ant jar
+
+    - cp build/jar/$PROJECT_JAR /home/gitlab-runner/JARS/$CI_BUILD_REF_NAME
+    - echo $PROJECT_JAR
+    # trigger triglav_rest build and commit to triglav_rest
+    - curl -X POST -F token=9176d5285570b34e7fd409ef5c51c4 -F ref=dev https://gitlab.prtech.mk/api/v4/projects/17/trigger/pipeline
+    - curl -X POST -F token=9176d5285570b34e7fd409ef5c51c4 -F ref=staging https://gitlab.prtech.mk/api/v4/projects/17/trigger/pipeline
+  artifacts:
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+    paths:
+    - build/jar/$PROJECT_JAR
+    expire_in: 5 days
+  only:
+    - master
+    - dev
+
+
+static_analysis:
+  stage: sonarqube
+  script:
+    - sonar-scanner -Dsonar.java.libraries=../common_libs/*.jar -Dsonar.sources=. -Dsonar.projectKey=$CI_PROJECT_NAME -Dsonar.analysis.mode=publish -Dsonar.login=a02003f1f8f90382d7570b57a85c00c38132f85f -Dsonar.branch=$CI_BUILD_REF_NAME -Dsonar.projectName=$CI_PROJECT_NAME
+    - sonar-scanner -Dsonar.java.libraries=../common_libs/*.jar -Dsonar.sources=. -Dsonar.projectKey=$CI_PROJECT_NAME -Dsonar.analysis.mode=preview -Dsonar.login=a02003f1f8f90382d7570b57a85c00c38132f85f -Dsonar.branch=$CI_BUILD_REF_NAME -Dsonar.projectName=$CI_PROJECT_NAME -Dsonar.gitlab.commit_sha=$CI_BUILD_REF -Dsonar.gitlab.ref_name=$CI_BUILD_REF_NAME -Dsonar.gitlab.project_id=$CI_PROJECT_ID
